@@ -1,0 +1,74 @@
+{
+  "apiVersion": "maas.opendatahub.io/v1alpha1",
+  "kind": "MaaSSubscription",
+  "metadata": {
+    "name": "oidc-ai-engineers",
+    "namespace": "models-as-a-service",
+    "annotations": {
+      "openshift.io/display-name": "OIDC AI Engineers",
+      "openshift.io/description": "Model access for external AI engineers"
+    }
+  },
+  "spec": {
+    "modelRefs": [
+      {
+        "name": "gpt-oss-120b",
+        "namespace": "external-models",
+        "tokenRateLimits": [
+          {
+            "limit": 1000,
+            "window": "1h"
+          }
+        ]
+      },
+      {
+        "name": "granite-3-2-8b-instruct",
+        "namespace": "external-models",
+        "tokenRateLimits": [
+          {
+            "limit": 1000,
+            "window": "1h"
+          }
+        ]
+      },
+      {
+        "name": "llama-scout-17b",
+        "namespace": "external-models",
+        "tokenRateLimits": [
+          {
+            "limit": 1000,
+            "window": "1h"
+          }
+        ]
+      },
+      {
+        "name": "qwen3-14b",
+        "namespace": "external-models",
+        "tokenRateLimits": [
+          {
+            "limit": 1000,
+            "window": "1h"
+          }
+        ]
+      },
+      {
+        "name": "qwen3-06b",
+        "namespace": "int-models",
+        "tokenRateLimits": [
+          {
+            "limit": 1000,
+            "window": "1h"
+          }
+        ]
+      }
+    ],
+    "owner": {
+      "groups": [
+        {
+          "name": "data-scientists"
+        }
+      ]
+    },
+    "priority": 31
+  }
+}

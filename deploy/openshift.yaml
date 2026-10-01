@@ -1,0 +1,121 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: maas-model-portal
+  labels:
+    app.kubernetes.io/part-of: maas-model-portal
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: model-portal
+  namespace: maas-model-portal
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: model-portal
+  namespace: maas-model-portal
+spec:
+  source:
+    type: Binary
+    binary: {}
+  strategy:
+    type: Docker
+    dockerStrategy: {}
+  output:
+    to:
+      kind: ImageStreamTag
+      name: model-portal:latest
+  runPolicy: Serial
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: model-portal
+  namespace: maas-model-portal
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: model-portal
+  template:
+    metadata:
+      labels:
+        app: model-portal
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: portal
+          image: image-registry.openshift-image-registry.svc:5000/maas-model-portal/model-portal:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: APP_ORIGIN
+              value: https://model-portal-maas-model-portal.apps.cluster-6hk7k.6hk7k.sandbox3854.opentlc.com
+            - name: OIDC_ISSUER
+              value: https://keycloak-maas-keycloak.apps.cluster-6hk7k.6hk7k.sandbox3854.opentlc.com/realms/maas
+            - name: OIDC_CLIENT_ID
+              value: maas-oidc
+            - name: MAAS_URL
+              value: https://maas.apps.cluster-6hk7k.6hk7k.sandbox3854.opentlc.com
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+            seccompProfile:
+              type: RuntimeDefault
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: model-portal
+  namespace: maas-model-portal
+spec:
+  selector:
+    app: model-portal
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: model-portal
+  namespace: maas-model-portal
+  annotations:
+    haproxy.router.openshift.io/timeout: 90s
+spec:
+  host: model-portal-maas-model-portal.apps.cluster-6hk7k.6hk7k.sandbox3854.opentlc.com
+  to:
+    kind: Service
+    name: model-portal
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

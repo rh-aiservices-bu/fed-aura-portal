@@ -1,0 +1,12 @@
+import {test,before,after} from 'node:test';
+import assert from 'node:assert/strict';
+import {spawn} from 'node:child_process';
+import {once} from 'node:events';
+const origin='http://localhost:3199';let server;
+before(async()=>{server=spawn(process.execPath,['server.mjs'],{cwd:import.meta.dirname,env:{...process.env,PORT:'3199',APP_ORIGIN:origin},stdio:['ignore','pipe','pipe']});await Promise.race([once(server.stdout,'data'),new Promise((_,reject)=>setTimeout(()=>reject(Error('Server did not start')),5000).unref())]);});
+after(()=>server?.kill());
+test('unauthenticated callers cannot read catalog or keys',async()=>{for(const path of ['/api/me','/api/catalog','/api/keys']){const r=await fetch(origin+path);assert.equal(r.status,401);assert.equal(r.headers.get('cache-control'),'no-store');}});
+test('cross-site mutations are rejected before reaching MaaS',async()=>{const r=await fetch(origin+'/api/keys',{method:'POST',headers:{Origin:'https://other.example','Content-Type':'application/json'},body:'{}'});assert.equal(r.status,403);assert.match((await r.json()).error,/origin/);});
+test('sign-in uses authorization code, PKCE and HttpOnly state cookie',async()=>{const r=await fetch(origin+'/auth/login',{redirect:'manual'});assert.equal(r.status,302);const u=new URL(r.headers.get('location'));assert.equal(u.searchParams.get('response_type'),'code');assert.equal(u.searchParams.get('code_challenge_method'),'S256');assert.equal(u.searchParams.get('redirect_uri'),origin+'/auth/callback');assert.ok(u.searchParams.get('code_challenge'));assert.match(r.headers.get('set-cookie'),/HttpOnly; SameSite=Lax/);});
+test('forged callback cannot establish a session',async()=>{const r=await fetch(origin+'/auth/callback?state=forged&code=forged');assert.equal(r.status,400);assert.equal(r.headers.get('set-cookie'),null);});
+test('static page contains no workshop password or credential token',async()=>{const r=await fetch(origin);const html=await r.text();assert.equal(r.status,200);assert.ok(!html.includes('maas-user'));assert.match(r.headers.get('content-security-policy'),/frame-ancestors 'none'/);});

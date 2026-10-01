@@ -1,0 +1,1 @@
+{"spec":{"strategy":{"type":"Recreate","rollingUpdate":null},"template":{"spec":{"volumes":[{"name":"postgresql-data","persistentVolumeClaim":{"claimName":"keycloak-postgresql-data"}}],"containers":[{"name":"pgsql","volumeMounts":[{"name":"postgresql-data","mountPath":"/var/lib/pgsql/data"}]}]}}}}
